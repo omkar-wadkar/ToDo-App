@@ -1,27 +1,43 @@
-import { useState } from "react";
-import { addTodo } from "./api";
+import { useEffect, useState } from "react";
+import { addTodo, updateTodo } from "./api";
 
-function TodoForm({ onTodoAdded }) {
+function TodoForm({ selectedTodo, onSave }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [priority, setPriority] = useState("Medium");
 
+  useEffect(() => {
+    if (selectedTodo) {
+      setTitle(selectedTodo.title);
+      setContent(selectedTodo.content);
+      setPriority(selectedTodo.priority);
+    }
+  }, [selectedTodo]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    await addTodo({ title, content, priority });
+    const todoData = { title, content, priority };
+
+    if (selectedTodo) {
+      await updateTodo(selectedTodo._id, todoData);
+    } else {
+      await addTodo(todoData);
+    }
 
     setTitle("");
     setContent("");
     setPriority("Medium");
 
-    onTodoAdded(); 
+    onSave(); 
   };
 
   return (
     <div className="card mb-4">
       <div className="card-body">
-        <h5 className="card-title">Add Todo</h5>
+        <h5 className="card-title">
+          {selectedTodo ? "Edit Todo" : "Add Todo"}
+        </h5>
 
         <form onSubmit={handleSubmit}>
           <input
@@ -48,7 +64,9 @@ function TodoForm({ onTodoAdded }) {
             <option>Low</option>
           </select>
 
-          <button className="btn btn-primary w-25 mx-auto">Save Todo</button>
+          <button className="btn btn-primary w-100">
+            {selectedTodo ? "Update Todo" : "Save Todo"}
+          </button>
         </form>
       </div>
     </div>

@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
 import TodoForm from "./TodoForm";
 import TodoList from "./TodoList";
-import { getTodos } from "./api";
-import Header from "./Header";
+import { getTodos, deleteTodo } from "./api";
 
 function App() {
   const [todos, setTodos] = useState([]);
+  const [selectedTodo, setSelectedTodo] = useState(null);
 
   const loadTodos = async () => {
     const res = await getTodos();
     setTodos(res.data);
+    setSelectedTodo(null); 
+  };
+
+  const handleDelete = async (id) => {
+    await deleteTodo(id);
+    loadTodos();
   };
 
   useEffect(() => {
@@ -19,10 +24,15 @@ function App() {
 
   return (
     <div className="container mt-4">
-      <TodoForm onTodoAdded={loadTodos} />
+      <TodoForm
+        selectedTodo={selectedTodo}
+        onSave={loadTodos}
+      />
+
       <TodoList
         todos={todos}
-        onTodoDeleted={loadTodos}
+        onEdit={setSelectedTodo}
+        onDelete={handleDelete}
       />
     </div>
   );
