@@ -24,7 +24,10 @@ a:hover {
 
 body {
   margin: 0;
-  height: 100vh;
+  min-height: 100vh;
+  background-color: #989494;
+  color:antiquewhite
+  
 }
 
 h1 {
@@ -64,8 +67,31 @@ button:focus-visible {
   }
 }
 
+.todo-card {
+  background-color: #503a3a;
+  color:antiquewhite
+}
+
 .todo-card:hover {
 
   border: 10px black;
-  box-shadow: 5px 10px 15px rgba(0, 0, 0, 0.3);
+  box-shadow: 5px 10px 15px rgb(0, 0, 0);
+}
+
+.todo-form {
+  background-color: #503a3a;
+  color:antiquewhite
+}
+
+.todo-form:hover {
+  border: 10px black;
+  box-shadow: 5px 10px 15px rgb(0, 0, 0);
+}
+
+.head {
+  color: rgb(255, 255, 255);
+}
+
+input {
+  color: #213547;
 }

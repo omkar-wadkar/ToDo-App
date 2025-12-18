@@ -2,6 +2,8 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 dotenv.config();
 
@@ -14,61 +16,126 @@ mongoose
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.log(err));
 
+const userSchema = new mongoose.Schema({
+  name: String,
+  email: {
+    type: String,
+    unique: true,
+  },
+  password: String,
+});
+
+const User = mongoose.model("User", userSchema);
+
 const todoSchema = new mongoose.Schema(
   {
     title: String,
     content: String,
     priority: String,
+    completed: {
+      type: Boolean,
+      default: false,
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
   },
   { timestamps: true }
 );
 
 const Todo = mongoose.model("Todo", todoSchema);
 
-app.post("/api/todos", async (req, res) => {
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader)
+    return res.status(401).json({ message: "No token provided" });
+
+  const token = authHeader.split(" ")[1];
+
   try {
-    const todo = await Todo.create(req.body);
-    res.status(201).json(todo);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.userId;
+    next();
+  } catch {
+    res.status(401).json({ message: "Invalid token" });
   }
+};
+
+app.get("/", (req, res) => {
+  res.send("<h1>Todo API is running</h1>");
 });
 
-app.get("/api/todos", async (req, res) => {
-  try {
-    const todos = await Todo.find().sort({ createdAt: -1 });
-    res.json(todos);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+app.post("/api/auth/register", async (req, res) => {
+  const { name, email, password } = req.body;
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  await User.create({
+    name,
+    email,
+    password: hashedPassword,
+  });
+
+  res.json({ message: "User registered successfully" });
 });
 
-app.delete("/api/todos/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
+app.post("/api/auth/login", async (req, res) => {
+  const { email, password } = req.body;
 
-    await Todo.findByIdAndDelete(id);
+  const user = await User.findOne({ email });
+  if (!user)
+    return res.status(401).json({ message: "Invalid credentials" });
 
-    res.json({ message: "Todo deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch)
+    return res.status(401).json({ message: "Invalid credentials" });
+
+  const token = jwt.sign(
+    { userId: user._id },
+    process.env.JWT_SECRET,
+    { expiresIn: "1d" }
+  );
+
+  res.json({ token });
 });
 
-app.put("/api/todos/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
+app.post("/api/todos", authMiddleware, async (req, res) => {
+  const todo = await Todo.create({
+    ...req.body,
+    user: req.userId,
+  });
 
-    const updatedTodo = await Todo.findByIdAndUpdate(
-      id,
-      req.body,
-      { new: true }
-    );
+  res.status(201).json(todo);
+});
 
-    res.json(updatedTodo);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+app.get("/api/todos", authMiddleware, async (req, res) => {
+  const todos = await Todo.find({ user: req.userId }).sort({
+    createdAt: -1,
+  });
+
+  res.json(todos);
+});
+
+app.put("/api/todos/:id", authMiddleware, async (req, res) => {
+  const updatedTodo = await Todo.findOneAndUpdate(
+    { _id: req.params.id, user: req.userId },
+    { $set: req.body },
+    { new: true }
+  );
+
+  res.json(updatedTodo);
+});
+
+app.delete("/api/todos/:id", authMiddleware, async (req, res) => {
+  await Todo.findOneAndDelete({
+    _id: req.params.id,
+    user: req.userId,
+  });
+
+  res.json({ message: "Todo deleted successfully" });
 });
 
 app.listen(5000, () => {

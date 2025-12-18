@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import TodoForm from "./TodoForm";
 import TodoList from "./TodoList";
-import Header from "./Header"
+import Header from "./Header";
+
+import Login from "./Login";
+import Register from "./Register";
+import ProtectedRoute from "./ProtectedRoute";
+
 import { getTodos, deleteTodo } from "./api";
 
 function App() {
@@ -11,7 +18,7 @@ function App() {
   const loadTodos = async () => {
     const res = await getTodos();
     setTodos(res.data);
-    setSelectedTodo(null); 
+    setSelectedTodo(null);
   };
 
   const handleDelete = async (id) => {
@@ -23,7 +30,7 @@ function App() {
     loadTodos();
   }, []);
 
-  return (
+  const TodoApp = () => (
     <>
       <Header />
       <div className="container mt-4">
@@ -36,9 +43,29 @@ function App() {
           todos={todos}
           onEdit={setSelectedTodo}
           onDelete={handleDelete}
+          onRefresh={loadTodos}
         />
       </div>
     </>
+  );
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <TodoApp />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
